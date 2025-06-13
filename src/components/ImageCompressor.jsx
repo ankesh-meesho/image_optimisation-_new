@@ -1,3 +1,4 @@
+import Preview from './Preview';
 import React, { useState, useEffect } from 'react';
 import { generateImagePreviewsWithQuality } from './utils/imageProcessor'; // Import the new function
 const PreviewCard = ( {result} ) => {
@@ -53,6 +54,12 @@ function ImageUploader() {
   const [feedback, setFeedback] = useState('Select an image to see conversion options.');
   const [results, setResults] = useState([]);
   const [originalInfo, setOriginalInfo] = useState(null);
+  const [maxWidth, setMaxWidth] = useState(1200);
+  const [advancedMode, setAdvancedMode] = useState(false);
+
+  const handleMaxWidthChange = (event) => {
+    setMaxWidth(event.target.value);
+  }
 
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
@@ -64,7 +71,7 @@ function ImageUploader() {
     setOriginalInfo({ name: file.name, size: file.size, file: file });
 
     try {
-      const previews = await generateImagePreviewsWithQuality(file, { maxWidth: 1200 });
+      const previews = await generateImagePreviewsWithQuality(file, { maxWidth: maxWidth });
       setResults(previews);
       if (previews.length === 0) {
         setFeedback('Could not generate any previews. Check browser support (e.g., for AVIF).');
@@ -101,7 +108,8 @@ function ImageUploader() {
   return (
     <div>
       <h3>Select Image to Generate Previews</h3>
-      <p>Your image will be resized (if width &gt; 1200px) and converted to multiple formats.</p>
+      <p>Your image will be resized (if width &gt;  ) and converted to multiple formats.</p>
+      <input type="number" value={maxWidth} onChange={handleMaxWidthChange} />
       
       <input type="file" accept="image/*" onChange={handleFileChange} disabled={isProcessing} />
       
@@ -110,6 +118,14 @@ function ImageUploader() {
 
       {originalInfo && !isProcessing && (
         <p>Original: <strong>{originalInfo.name}</strong> ({(originalInfo.size / 1024).toFixed(1)} KB)</p>
+      )}
+      <button onClick={() => setAdvancedMode(!advancedMode)}>Toggle Advanced Mode</button>
+      {advancedMode && (
+        <div>
+          <button onClick={() => setAdvancedMode(false)}>X</button>
+          <Preview beforeImage={originalInfo} afterImage={results.find(result => result.isOriginalFormat)} width={maxWidth} />
+        </div>
+        
       )}
 
       {results.length > 0 && (
@@ -128,6 +144,7 @@ function ImageUploader() {
           ))}
         </div>
       )}
+      
     </div>
   );
 }

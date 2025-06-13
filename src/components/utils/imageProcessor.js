@@ -1,7 +1,7 @@
-import imageCompression from 'browser-image-compression';
+import Pica from 'pica';
 import { ssimResult } from './ssimResult';
-// SECTION 1: HELPER UTILITIES
-// These functions will support our main orchestration function.
+
+const pica = new Pica();
 
 const getImageDimensions = (file) => {
   return new Promise((resolve, reject) => {
@@ -17,33 +17,46 @@ const getImageDimensions = (file) => {
 
 const processImage = async (file, options) => {
   try {
-    return await imageCompression(file, options);
+    const sourceImage = new Image();
+    const sourceUrl = URL.createObjectURL(file);
+    sourceImage.src = sourceUrl;
+    await new Promise((resolve, reject) => {
+        sourceImage.onload = resolve;
+        sourceImage.onerror = reject;
+    });
+    URL.revokeObjectURL(sourceUrl);
+
+    const destCanvas = document.createElement('canvas');
+    let targetWidth = sourceImage.width;
+    let targetHeight = sourceImage.height;
+
+    if (options.maxWidth && sourceImage.width > options.maxWidth) {
+        const aspectRatio = sourceImage.width / sourceImage.height;
+        targetWidth = options.maxWidth;
+        targetHeight = targetWidth / aspectRatio;
+    }
+    
+    destCanvas.width = targetWidth;
+    destCanvas.height = targetHeight;
+    
+    await pica.resize(sourceImage, destCanvas, {
+      alpha: true,
+      unsharpAmount: 160,
+      unsharpRadius: 0.6,
+      unsharpThreshold: 1,
+    });
+    
+    const outputQuality = options.quality !== undefined ? options.quality : 1;
+
+    const blob = await pica.toBlob(destCanvas, options.fileType, outputQuality);
+
+    return new File([blob], file.name, { type: options.fileType });
   } catch (error) {
     console.error(`Error processing to ${options.fileType || 'original'} format:`, error);
     throw new Error(`Failed to convert to ${options.fileType}: ${error.message}`);
   }
 };
 
-const getImageDataFromFile = async (file, { width, height }) => {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  
-  const img = await createImageBitmap(file);
-  ctx.drawImage(img, 0, 0, width, height);
-  img.close();
-  
-  return ctx.getImageData(0, 0, width, height);
-};
-
-
-// SECTION 2: MAIN ORCHESTRATION FUNCTION
-
-/**
- * Takes one image, processes it into multiple formats, and calculates the
- * perceptual quality (SSIM score) for each successful conversion.
- */
 export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
   if (!file || !file.type.startsWith('image/')) {
     throw new Error('Invalid file type.');
@@ -60,14 +73,11 @@ export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
     { format: 'image/png', label: 'PNG' }
   ];
 
-  // --- STAGE 1: Process all image format conversions in parallel ---
   const processingPromises = targetFormats.map(target => {
     const options = {
-      useWebWorker: true,
       fileType: target.format,
-      initialQuality: 1,
-      ...(needsResizing && { maxWidthOrHeight: maxWidth }),
-      ...(!needsResizing && { alwaysKeepResolution: true }),
+      maxWidth: needsResizing ? maxWidth : undefined,
+      quality: 0.99, 
     };
     return processImage(file, options);
   });
@@ -95,19 +105,16 @@ export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
     }
   });
 
-  // --- STAGE 2: Calculate SSIM for each successful conversion in parallel ---
   const resultsWithQualityPromises = successfulResults.map(async (result) => {
     try {
       const ssimScore = await ssimResult(file, result.file);
-      console.log('ssimScore', ssimScore);
       return { ...result, ssimResult: ssimScore };
     } catch (error) {
       console.error(`Could not calculate SSIM for ${result.label}:`, error);
-      return { ...result, ssimResult: 'Error' }; // Attach error state
+      return { ...result, ssimResult: 'Error' };
     }
   });
 
   const finalResults = await Promise.all(resultsWithQualityPromises);
-  console.log('finalResults', finalResults);
   return finalResults;
 };

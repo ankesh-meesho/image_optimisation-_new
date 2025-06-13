@@ -57,6 +57,22 @@ function ImageUploader() {
   const [maxWidth, setMaxWidth] = useState(1200);
   const [advancedMode, setAdvancedMode] = useState(false);
 
+  useEffect(() => {
+    if (!originalInfo?.file) return;
+  
+    async function fetchPreviews() {
+      try {
+        const previews = await generateImagePreviewsWithQuality(originalInfo.file, { maxWidth: maxWidth });
+        setResults(previews);
+      } catch (error) {
+        console.error('Error generating previews:', error);
+      }
+    }
+  
+    fetchPreviews();
+  }, [originalInfo?.file, maxWidth]);
+
+
   const handleMaxWidthChange = (event) => {
     setMaxWidth(event.target.value);
   }
@@ -109,6 +125,7 @@ function ImageUploader() {
     <div>
       <h3>Select Image to Generate Previews</h3>
       <p>Your image will be resized (if width &gt;  ) and converted to multiple formats.</p>
+      <h3>Original Width: {results[0]?.originalWidth}</h3>
       <input type="number" value={maxWidth} onChange={handleMaxWidthChange} />
       
       <input type="file" accept="image/*" onChange={handleFileChange} disabled={isProcessing} />
@@ -120,7 +137,7 @@ function ImageUploader() {
         <p>Original: <strong>{originalInfo.name}</strong> ({(originalInfo.size / 1024).toFixed(1)} KB)</p>
       )}
       <button onClick={() => setAdvancedMode(!advancedMode)}>Toggle Advanced Mode</button>
-      {advancedMode && (
+      {advancedMode && results.length > 0 && (
         <div>
           <button onClick={() => setAdvancedMode(false)}>X</button>
           <Preview beforeImage={originalInfo} afterImage={results.find(result => result.isOriginalFormat)} width={maxWidth} />

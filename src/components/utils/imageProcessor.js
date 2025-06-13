@@ -17,6 +17,9 @@ const getImageDimensions = (file) => {
 
 const processImage = async (file, options) => {
   try {
+    if(!options.needsResizing && options.fileType === file.type) {
+      return file;
+    }
     const sourceImage = new Image();
     const sourceUrl = URL.createObjectURL(file);
     sourceImage.src = sourceUrl;
@@ -78,6 +81,7 @@ export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
       fileType: target.format,
       maxWidth: needsResizing ? maxWidth : undefined,
       quality: 0.99, 
+      needsResizing: needsResizing,
     };
     return processImage(file, options);
   });
@@ -96,6 +100,7 @@ export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
         size: newFile.size,
         reduction: reduction,
         isOriginalFormat: newFile.type === originalFormat,
+        originalWidth: width,
       };
     });
 

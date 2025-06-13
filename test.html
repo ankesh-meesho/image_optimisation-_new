@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AVIF Support Test</title>
+</head>
+<body>
+    <h1>Browser AVIF Encoding Test</h1>
+    <p>Check the developer console for results. This test removes all libraries and frameworks to check the browser's core functionality.</p>
+
+    <script>
+        const isFormatSupported = (mimeType) => {
+            const canvas = document.createElement('canvas');
+            // A 2x2 canvas is sometimes more reliable for checks than 1x1
+            canvas.width = 2;
+            canvas.height = 2;
+            const dataUrl = canvas.toDataURL(mimeType);
+            return dataUrl.startsWith(`data:${mimeType}`);
+        };
+
+        console.log("Starting AVIF support test...");
+
+        const supportsAVIF = isFormatSupported('image/avif');
+
+        if (supportsAVIF) {
+            console.log("%cYES: This browser's Canvas API supports encoding to image/avif.", "color: green; font-size: 18px;");
+        } else {
+            console.log("%cNO: This browser's Canvas API does NOT support encoding to image/avif. It will fall back to PNG.", "color: red; font-size: 18px;");
+        }
+    </script>
+</body>
+</html>

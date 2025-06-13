@@ -112,7 +112,7 @@ function ImageUploader() {
       <input type="number" value={maxWidth} onChange={handleMaxWidthChange} />
       
       <input type="file" accept="image/*" onChange={handleFileChange} disabled={isProcessing} />
-      
+      {results.length > 0 && <p>Original Width: {results[0]?.originalWidth}</p>}
       {isProcessing && <p style={{fontWeight: 'bold'}}>Processing, please wait...</p>}
       {feedback && !isProcessing && <p>{feedback}</p>}
 

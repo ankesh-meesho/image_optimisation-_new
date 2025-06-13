@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/bundle-analyzer": "^15.3.3",
     "@squoosh/lib": "^0.3.1",
     "browser-image-compression": "^2.0.2",
     "next": "14.2.29",

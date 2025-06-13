@@ -44,6 +44,15 @@ const getImageDataFromFile = async (file, { width, height }) => {
  * Takes one image, processes it into multiple formats, and calculates the
  * perceptual quality (SSIM score) for each successful conversion.
  */
+
+const getMaxWidthOrHeight = (height,width, maxWidth) => {
+  if(height > width) {
+    const aspectRatio = height / width;
+    return maxWidth * aspectRatio;
+  }
+  return maxWidth;
+}
+
 export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
   if (!file || !file.type.startsWith('image/')) {
     throw new Error('Invalid file type.');
@@ -51,8 +60,9 @@ export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
 
   const originalSize = file.size;
   const originalFormat = file.type;
-  const { width } = await getImageDimensions(file);
+  const { height, width } = await getImageDimensions(file);
   const needsResizing = width > maxWidth;
+  const maxWidthOrHeight=getMaxWidthOrHeight(height,width, maxWidth);
 
   const targetFormats = [
     { format: 'image/jpeg', label: 'JPEG' },
@@ -66,7 +76,7 @@ export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
       useWebWorker: true,
       fileType: target.format,
       initialQuality: 1,
-      ...(needsResizing && { maxWidthOrHeight: maxWidth }),
+      ...(needsResizing && { maxWidthOrHeight: maxWidthOrHeight }),
       ...(!needsResizing && { alwaysKeepResolution: true }),
     };
     return processImage(file, options);
@@ -86,6 +96,7 @@ export const generateImagePreviewsWithQuality = async (file, { maxWidth }) => {
         size: newFile.size,
         reduction: reduction,
         isOriginalFormat: newFile.type === originalFormat,
+        originalWidth: width,
       };
     });
 
